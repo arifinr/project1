@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import psycopg2
 
 def create_table(cur):
@@ -36,6 +37,7 @@ def insert_or_update(cur, row):
     book_insert = "INSERT INTO books (isbn, title, author_names, year) " \
         f"VALUES('{isbn}', '{title}', '{{{authors}}}', {year})"
     # print("\n", book_insert)
+    print("Inserting", title)
     cur.execute(book_insert)
     
     authors_list = row[2].split(", ")
@@ -45,6 +47,7 @@ def insert_or_update(cur, row):
             f"('{auth}', '{{\"{isbn}\"}}') ON CONFLICT(author_name) DO UPDATE" \
             f" SET isbn_books = array_append(authors.isbn_books, '{isbn}')"
         # print(auth_insert)
+        print("Inserting/updating", auth)
         cur.execute(auth_insert)
 
 
@@ -62,32 +65,37 @@ def read_file(cur):
 def main():
     '''Connecting to the PostgreSQL database'''
     try:
-        conn = psycopg2.connect(user = "postgres",
-                                password = "saybacorp",
-                                host = "localhost",
-                                port = "5432",
-                                database = "postgres")
+        # Local database
+        # conn = psycopg2.connect(user = "postgres",
+        #                         password = "saybacorp",
+        #                         host = "localhost",
+        #                         port = "5432",
+        #                         database = "postgres")
+
+        # Heroku database
+        DATABASE_URL = os.environ['DATABASE_URL']
+
+        print('Connecting to the PostgreSQL database')
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
                             
-        # Create a cursor
+        # Create a cursor and tables
         cur = conn.cursor()
         create_table(cur)
         
         read_file(cur)
-        
-        cur.execute("SELECT * FROM authors")
-        for table in cur.fetchall():
-            print(table)
-        
-        # Close the communication with the PostgreSQL
-        cur.close()
+
+        # Commiting transactions to database
+        conn.commit()
     except (Exception, psycopg2.Error) as error :
         print (error)
     finally:
         if conn is not None:
+            # Close the communication with the PostgreSQL
+            cur.close()
             conn.close()
         print('Database connection closed.')
 
 
 if __name__ == "__main__":
-    # execute only if run as a script
+    # Execute only if run as a script
     main()
