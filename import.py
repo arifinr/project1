@@ -4,20 +4,23 @@ import os
 import psycopg2
 
 def create_table(cur):
-    '''Create a books and authors table'''
+    '''Create a books and reviews table'''
     create = (
         """CREATE TABLE books (
             isbn CHAR(10) PRIMARY KEY,
             title VARCHAR,
-            author_names text ARRAY,
-            year INTEGER
+            author_names TEXT ARRAY,
+            year SMALLINT
         )
         """,
-        """CREATE TABLE authors (
-            author_name text PRIMARY KEY,
-            isbn_books CHAR(10) ARRAY
+        """CREATE TABLE reviews (
+            id SERIAL PRIMARY KEY,
+            reviewer CHAR(20) REFERENCES users(username),
+            isbn CHAR(10) REFERENCES books(isbn),
+            rating SMALLINT,
+            review TEXT
         )
-        """
+        """,
     )
 
     # Create table one by one
@@ -39,16 +42,6 @@ def insert_or_update(cur, row):
     # print("\n", book_insert)
     print("Inserting", title)
     cur.execute(book_insert)
-    
-    authors_list = row[2].split(", ")
-    for auth in authors_list:
-        auth = auth.replace("'", "''")
-        auth_insert = f"INSERT INTO authors (author_name, isbn_books) VALUES" \
-            f"('{auth}', '{{\"{isbn}\"}}') ON CONFLICT(author_name) DO UPDATE" \
-            f" SET isbn_books = array_append(authors.isbn_books, '{isbn}')"
-        # print(auth_insert)
-        print("Inserting/updating", auth)
-        cur.execute(auth_insert)
 
 
 def read_file(cur):
