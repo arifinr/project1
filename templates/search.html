@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Search Results{% endblock %} 
+
+{% block content %}
+<div class="tile is-ancestor" style="flex-wrap: wrap">
+    {% if results|length %}
+        {% for result in results %}
+        <div class="tile is-vertical is-3">
+            <div class="tile">
+                <div class="tile is-parent">
+                    <article class="tile is-child notification is-info">
+                        <img src="http://covers.openlibrary.org/b/isbn/{{ result.isbn }}-L.jpg">
+                        <a class="title is-2" a href="book/{{result.isbn}}">{{ result.title }}</a>
+                    </article>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <h1 class="title">No results match</h1>
+    {% endif %}
+</div>
+  <a href="{{ url_for('index') }}">Search for more</a>
+{% endblock %}
