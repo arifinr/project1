@@ -1,3 +1,5 @@
+import os
+import requests
 from flask import Flask, session, render_template, request, redirect, url_for, flash
 from flask_session import Session
 from flask_login import LoginManager, login_user, login_required, current_user, logout_user
@@ -6,7 +8,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from database import db
+from database import db, engine
 from models import User
 
 app = Flask(__name__)
@@ -26,7 +28,7 @@ def load_user(username):
     # since the user_id is just the primary key of our user table, use it in the query for the user
     return User.query.get(username)
 
-@app.route("/")
+@app.route("/", methods=['GET', 'POST'])
 @login_required
 def index():
     return render_template('index.html', current_user=current_user)
@@ -88,11 +90,42 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-@app.route("/book", methods=['GET', 'POST'])
-def book(isbn):
+@app.route("/search", methods=['GET', 'POST'])
+@login_required
+def search():
     if request.method == 'GET':
         return render_template("error.html", message="Please submit the form instead.")
     else:
-        # session
-        search = request.form.get("search")
-        return render_template("book.html", search=search)
+        search_term = str(request.form.get('search_term')).lower()    
+        
+        query_book = f"SELECT * FROM books WHERE LOWER(isbn) LIKE '%{search_term}%' " \
+                        f"OR LOWER(title) LIKE '%{search_term}%' "
+        query_author = "SELECT * FROM books WHERE EXISTS (SELECT FROM " \
+                        f"unnest(author_names) elem WHERE LOWER(elem) LIKE '%{search_term}%') "
+
+        rs_book = db.execute(query_book)
+        results = rs_book.fetchall()
+
+        rs_author = db.execute(query_author)
+        results += rs_author.fetchall()
+
+        return render_template('search.html', current_user=current_user, results=results)
+
+
+@app.route("/book/<isbn>", methods=['GET'])
+@login_required
+def book(isbn):
+    query = f"SELECT * FROM books WHERE isbn = '{isbn}'"
+
+    rs = db.execute(query)
+    book = rs.fetchone()
+
+    if book is None:
+        return render_template("error.html", message="That book doesn't exist")
+
+    res = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": os.environ['GOODREADS_KEY'], "isbns": book.isbn})
+    book_info = res.json()
+    rating = book_info['books'][0]['average_rating']
+    
+    
+    return render_template('book.html', current_user=current_user, book=book, rating=rating)
