@@ -26,4 +26,48 @@
         </div>
 </div>
   <a href="{{ url_for('index') }}">Search for more</a>
+
+{% for review in reviews %}
+<section class="section">
+    <div class="container">
+        <p class="title is-5">{{ review.rating }}</p>
+        <p class="title is-6">{{ review.review }}</p>
+        <p class="subtitle is-6">{{ review.reviewer }}</p>
+    </div>
+</section>
+{% endfor %}
+
+{% if enable_review == True %}
+<form action="{{ url_for('book', isbn=book.isbn) }}" method="POST">
+    <textarea class="textarea" name="review" placeholder="Write a review"></textarea>
+    <div class="field is-grouped">
+        <div class="control">
+            <label class="radio">
+                <input type="radio" name="rating" value="1">
+                1
+            </label>
+            <label class="radio">
+                <input type="radio" name="rating" value="2">
+                2
+            </label>
+            <label class="radio">
+                <input type="radio" name="rating" value="3">
+                3
+            </label>
+            <label class="radio">
+                <input type="radio" name="rating" value="4">
+                4
+            </label>
+            <label class="radio">
+                <input type="radio" name="rating" value="5" checked>
+                5
+            </label>
+        </div>
+    </div>
+    <div class="control">
+        <button class="button is-link">Submit</button>
+    </div>
+</form>
+{% endif %}
+
 {% endblock %}

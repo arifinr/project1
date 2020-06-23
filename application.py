@@ -112,13 +112,31 @@ def search():
         return render_template('search.html', current_user=current_user, results=results)
 
 
-@app.route("/book/<isbn>", methods=['GET'])
+@app.route("/book/<isbn>", methods=['GET', 'POST'])
 @login_required
 def book(isbn):
-    query = f"SELECT * FROM books WHERE isbn = '{isbn}'"
+    if request.method == 'POST':
+        rating_review = int(request.form.get('rating'))
+        text_review = request.form.get('review')
+        review_insert = "INSERT INTO reviews (reviewer, isbn, rating, review) " \
+            f"VALUES('{current_user.username}', '{isbn}', {rating_review}, '{text_review}')"
+        db.execute(review_insert)
+        db.commit()
+        return redirect(url_for('book', isbn=isbn))
+    
+    query_book = f"SELECT * FROM books WHERE isbn = '{isbn}'"
+    query_review = f"SELECT * FROM reviews WHERE isbn = '{isbn}'"
+    query_me = f"SELECT * FROM reviews WHERE reviewer = '{current_user.username}' AND isbn = '{isbn}'"
 
-    rs = db.execute(query)
-    book = rs.fetchone()
+    bk = db.execute(query_book)
+    book = bk.fetchone()
+
+    rv = db.execute(query_review)
+    reviews = rv.fetchall()
+
+    mr = db.execute(query_me)
+    my_reviews = mr.fetchall()
+    enable_review = False if my_reviews else True
 
     if book is None:
         return render_template("error.html", message="That book doesn't exist")
@@ -127,5 +145,5 @@ def book(isbn):
     book_info = res.json()
     rating = book_info['books'][0]['average_rating']
     
-    
-    return render_template('book.html', current_user=current_user, book=book, rating=rating)
+    return render_template('book.html', current_user=current_user, book=book, rating=rating, 
+        reviews=reviews, enable_review=enable_review)
