@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 from flask import Flask, session, render_template, request, redirect, url_for, flash
 from flask_session import Session
@@ -147,3 +148,36 @@ def book(isbn):
     
     return render_template('book.html', current_user=current_user, book=book, rating=rating, 
         reviews=reviews, enable_review=enable_review)
+
+
+@app.route("/api/<isbn>", methods=['GET'])
+@login_required
+def api(isbn):
+    query_book = f"SELECT * FROM books WHERE isbn = '{isbn}'"
+    query_review = f"SELECT * FROM reviews WHERE isbn = '{isbn}'"
+
+    bk = db.execute(query_book)
+    book = bk.fetchone()
+
+    rv = db.execute(query_review)
+    reviews = rv.fetchall()
+
+    score = 0
+    for rev in reviews:
+        score += int(rev['rating'])
+
+    avg_score = -1 if len(reviews) == 0 else score/len(reviews)
+
+    data_set = {
+        "title": book['title'],
+        "author": book['author_names'],
+        "year": book['year'],
+        "isbn": book['isbn'],
+        "review_count": len(reviews),
+        "average_score": avg_score, 
+    }
+
+    json_dump = json.dumps(data_set)
+    json_object = json.loads(json_dump)
+
+    return json_object
